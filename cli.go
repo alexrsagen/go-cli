@@ -210,9 +210,17 @@ func Exec(path []string) bool {
 			sort.Strings(names)
 
 			// List sorted items
+			longestName := 0
+			for _, name := range names {
+				if len(name) > longestName {
+					longestName = len(name)
+				}
+			}
+			longestName += 4
+
 			for _, name := range names {
 				if items[name].Handler != nil {
-					Printf("                    %s\r%s\n", items[name].Description, name)
+					Printf(strings.Repeat(" ", longestName)+"%s\r%s\n", items[name].Description, name)
 				}
 			}
 		}
