@@ -69,6 +69,12 @@ list = cli.List{
 }
 ```
 
+### Handler
+```go
+type Handler func(args []string)
+```
+This defines the prototype for a function ran when executing an [Item](#item)
+
 ### Item
 ```go
 type Item struct {
