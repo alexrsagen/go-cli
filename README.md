@@ -3,6 +3,8 @@ A simple CLI library written in Go.
 
 The library is intended to be used for a whole application, meaning only one CLI is possible for the whole app.
 
+![Demo GIF](https://raw.githubusercontent.com/alexrsagen/go-cli/master/demo.gif)
+
 ## Features
 - Command autocompletion
 - Bash-like command history
@@ -40,7 +42,7 @@ list = cli.List{
         Description: "A nested menu of commands",
         Handler: func(args []string) {
             cli.SetList(list["submenu"].List)
-            cli.SetPrefix("eppcli(submenu)# ")
+            cli.SetPrefix("my-cli(submenu)# ")
         },
         List: cli.List{
             "command": &cli.Item{
@@ -49,19 +51,33 @@ list = cli.List{
                     cli.Println("Submenu example command ran!")
                 },
             },
+            "return": &cli.Item{
+                Description: "Return from submenu context",
+                Handler: func(args []string) {
+                    cli.SetList(list)
+                    cli.SetPrefix("my-cli# ")
+                },
+            },
         },
     },
     "another_submenu": &cli.Item{
         Description: "Another nested menu of commands",
         Handler: func(args []string) {
             cli.SetList(list["submenu"].List)
-            cli.SetPrefix("eppcli(submenu)# ")
+            cli.SetPrefix("my-cli(submenu)# ")
         },
         List: cli.List{
             "command": &cli.Item{
                 Description: "Example command",
                 Handler: func(args []string) {
                     cli.Println("Another submenu example command ran!")
+                },
+            },
+            "return": &cli.Item{
+                Description: "Return from submenu context",
+                Handler: func(args []string) {
+                    cli.SetList(list)
+                    cli.SetPrefix("my-cli# ")
                 },
             },
         },
