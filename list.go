@@ -5,10 +5,8 @@ import (
 	"strings"
 )
 
-var (
-	// ErrInvalidPath is returned when a List path is not found
-	ErrInvalidPath = errors.New("invalid path")
-)
+// ErrInvalidPath is returned when a List path is not found
+var ErrInvalidPath = errors.New("invalid path")
 
 // Handler defines the function ran when executing an Item
 type Handler func(args []string)
