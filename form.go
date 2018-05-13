@@ -8,6 +8,10 @@ import (
 	termbox "github.com/nsf/termbox-go"
 )
 
+type drawableForm interface {
+	drawForm()
+}
+
 // Field is a structure containing a single form field
 type Field struct {
 	DisplayName, Input string
@@ -20,7 +24,7 @@ func (f *Field) drawField(maxDNameLen int) {
 	if len(f.DisplayName) > 0 {
 		Printf("%s:%s    ", f.DisplayName, strings.Repeat(" ", maxDNameLen-len(f.DisplayName)))
 		f.pos = curPos
-		Println()
+		Println(f.Input)
 	}
 }
 
@@ -36,7 +40,7 @@ func (f *Field) getInput(cursor int) inputEvent {
 // FieldList is a collection of fields
 type FieldList []*Field
 
-func (fl FieldList) getInputs() {
+func (fl FieldList) getInputs(form drawableForm) {
 	if len(fl) == 0 {
 		return
 	}
@@ -49,10 +53,22 @@ func (fl FieldList) getInputs() {
 	drawText(cursor, fl[curField].Input)
 
 	for {
+		initPos := curPos
+
 		// Get input
 		switch ev := fl[curField].getInput(cursor); ev.Type {
 		case termbox.EventKey:
 			cursor = ev.Cursor
+
+			if curPos.y != initPos.y {
+				// Redraw form
+				termbox.Clear(termbox.ColorWhite, termbox.ColorDefault)
+				form.drawForm()
+
+				// Update cursor position
+				curPos = fl[curField].pos
+				drawText(cursor, fl[curField].Input)
+			}
 
 			switch ev.Key {
 			case termbox.KeyEnter:
@@ -82,6 +98,14 @@ func (fl FieldList) getInputs() {
 					drawText(cursor, fl[curField].Input)
 				}
 			}
+		case termbox.EventResize:
+			// Redraw form
+			termbox.Clear(termbox.ColorWhite, termbox.ColorDefault)
+			form.drawForm()
+
+			// Update cursor position
+			curPos = fl[curField].pos
+			drawText(cursor, fl[curField].Input)
 		}
 	}
 }
@@ -101,11 +125,11 @@ func (fl FieldList) drawForm() {
 
 // Form renders a series of input fields to be filled before returning
 func (fl FieldList) Form() {
-	curPos.y = 0
+	// Draw form
 	fl.drawForm()
 
 	// Get form input
-	fl.getInputs()
+	fl.getInputs(fl)
 
 	// Clear terminal
 	termbox.Clear(termbox.ColorWhite, termbox.ColorDefault)
@@ -123,10 +147,8 @@ type FieldCategory struct {
 // FieldCategoryList is a collection of field categories
 type FieldCategoryList []*FieldCategory
 
-// Form renders a series of input fields to be filled before returning
-func (fcl FieldCategoryList) Form() {
-	curPos.y = 0
-	var fields FieldList
+func (fcl FieldCategoryList) drawForm() {
+	curPos = pos{0, 0}
 
 	for _, fc := range fcl {
 		// Render category title
@@ -135,14 +157,22 @@ func (fcl FieldCategoryList) Form() {
 		// Render category form
 		fc.Fields.drawForm()
 		Println()
+	}
+}
 
+// Form renders a series of input fields to be filled before returning
+func (fcl FieldCategoryList) Form() {
+	// Draw form
+	fcl.drawForm()
+
+	// Get form input
+	var fields FieldList
+	for _, fc := range fcl {
 		for _, f := range fc.Fields {
 			fields = append(fields, f)
 		}
 	}
-
-	// Get form input
-	fields.getInputs()
+	fields.getInputs(fcl)
 
 	// Clear terminal
 	termbox.Clear(termbox.ColorWhite, termbox.ColorDefault)
