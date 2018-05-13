@@ -17,36 +17,37 @@ type pos struct {
 	x, y int
 }
 
-var curPos, termSize pos
+var closed = true
 var prefix = "# "
-var list List
+var curPos, termSize pos
+var list CommandList
 
-func clearArea(startX, startY, endX, endY int) {
-	if endY-startY < 0 {
+func clearArea(startPos, endPos pos) {
+	if endPos.y-startPos.y < 0 {
 		return
 	}
-	if endX < 0 {
+	if endPos.x < 0 {
 		return
 	}
 
-	for y := startY; y <= endY; y++ {
-		if y == 0 {
-			if endY-y > 0 {
-				for x := startX; x <= termSize.x; x++ {
+	for y := startPos.y; y <= endPos.y; y++ {
+		if y == startPos.y {
+			if endPos.y-y > 0 {
+				for x := startPos.x; x <= termSize.x; x++ {
 					termbox.SetCell(x, y, ' ', termbox.ColorWhite, termbox.ColorDefault)
 				}
 			} else {
-				for x := startX; x <= endX; x++ {
+				for x := startPos.x; x <= endPos.x; x++ {
 					termbox.SetCell(x, y, ' ', termbox.ColorWhite, termbox.ColorDefault)
 				}
 			}
 		} else {
-			if endY-y > 0 {
+			if endPos.y-y > 0 {
 				for x := 0; x <= termSize.x; x++ {
 					termbox.SetCell(x, y, ' ', termbox.ColorWhite, termbox.ColorDefault)
 				}
 			} else {
-				for x := 0; x <= endX; x++ {
+				for x := 0; x <= endPos.x; x++ {
 					termbox.SetCell(x, y, ' ', termbox.ColorWhite, termbox.ColorDefault)
 				}
 			}
@@ -156,19 +157,19 @@ func parseArgs(args []string) []string {
 
 // Printf outputs the formatted string to the active CLI
 func Printf(format string, a ...interface{}) {
-	if termbox.IsInit {
-		drawText(-1, fmt.Sprintf(format, a...))
-	} else {
+	if closed {
 		fmt.Printf(format, a...)
+	} else {
+		drawText(-1, fmt.Sprintf(format, a...))
 	}
 }
 
 // Println outputs the operands to the active CLI
 func Println(a ...interface{}) {
-	if termbox.IsInit {
-		drawText(-1, fmt.Sprintln(a...))
-	} else {
+	if closed {
 		fmt.Println(a...)
+	} else {
+		drawText(-1, fmt.Sprintln(a...))
 	}
 }
 
@@ -211,17 +212,17 @@ func Exec(path []string) bool {
 			sort.Strings(names)
 
 			// List sorted items
-			longestName := 0
+			maxNameLen := 0
 			for _, name := range names {
-				if len(name) > longestName {
-					longestName = len(name)
+				if len(name) > maxNameLen {
+					maxNameLen = len(name)
 				}
 			}
-			longestName += 4
+			maxNameLen += 4
 
 			for _, name := range names {
 				if items[name].Handler != nil {
-					Printf(strings.Repeat(" ", longestName)+"%s\r%s\n", items[name].Description, name)
+					Printf(strings.Repeat(" ", maxNameLen)+"%s\r%s\n", items[name].Description, name)
 				}
 			}
 		}
@@ -236,7 +237,7 @@ func SetPrefix(s string) {
 }
 
 // SetList sets the CLI command list
-func SetList(l List) {
+func SetList(l CommandList) {
 	list = l
 }
 
@@ -248,8 +249,8 @@ type inputEvent struct {
 	Error  error
 }
 
-func getInput(startPos pos, cursor int, input string) (ev inputEvent) {
-	if !termbox.IsInit {
+func getInput(startPos pos, cursor int, input string, mask rune) (ev inputEvent) {
+	if closed {
 		ev.Type = termbox.EventError
 		ev.Error = ErrNotRunning
 		return
@@ -271,26 +272,35 @@ func getInput(startPos pos, cursor int, input string) (ev inputEvent) {
 			// Move cursor pos to end
 			ev.Cursor = utf8.RuneCountInString(ev.Input)
 			// Redraw input area
-			curPos.x = startPos.x
-			curPos.y = startPos.y
-			drawText(ev.Cursor, ev.Input)
+			curPos = startPos
+			if mask != 0 {
+				drawText(ev.Cursor, strings.Repeat(string(mask), utf8.RuneCountInString(ev.Input)))
+			} else {
+				drawText(ev.Cursor, ev.Input)
+			}
 
 		case termbox.KeyHome:
 			// Move cursor pos to start
 			ev.Cursor = 0
 			// Redraw input area
-			curPos.x = startPos.x
-			curPos.y = startPos.y
-			drawText(ev.Cursor, ev.Input)
+			curPos = startPos
+			if mask != 0 {
+				drawText(ev.Cursor, strings.Repeat(string(mask), utf8.RuneCountInString(ev.Input)))
+			} else {
+				drawText(ev.Cursor, ev.Input)
+			}
 
 		case termbox.KeyArrowLeft:
 			// Move cursor pos back
 			if ev.Cursor > 0 {
 				ev.Cursor--
 				// Redraw input area
-				curPos.x = startPos.x
-				curPos.y = startPos.y
-				drawText(ev.Cursor, ev.Input)
+				curPos = startPos
+				if mask != 0 {
+					drawText(ev.Cursor, strings.Repeat(string(mask), utf8.RuneCountInString(ev.Input)))
+				} else {
+					drawText(ev.Cursor, ev.Input)
+				}
 			}
 
 		case termbox.KeyArrowRight:
@@ -298,9 +308,12 @@ func getInput(startPos pos, cursor int, input string) (ev inputEvent) {
 			if ev.Cursor < utf8.RuneCountInString(ev.Input) {
 				ev.Cursor++
 				// Redraw input area
-				curPos.x = startPos.x
-				curPos.y = startPos.y
-				drawText(ev.Cursor, ev.Input)
+				curPos = startPos
+				if mask != 0 {
+					drawText(ev.Cursor, strings.Repeat(string(mask), utf8.RuneCountInString(ev.Input)))
+				} else {
+					drawText(ev.Cursor, ev.Input)
+				}
 			}
 
 		case termbox.KeyDelete:
@@ -310,10 +323,13 @@ func getInput(startPos pos, cursor int, input string) (ev inputEvent) {
 				pos := bytePos(ev.Cursor, ev.Input)
 				ev.Input = ev.Input[:pos] + ev.Input[pos+1:]
 				// Redraw input area
-				clearArea(startPos.x, startPos.y, curPos.x, curPos.y)
-				curPos.x = startPos.x
-				curPos.y = startPos.y
-				drawText(ev.Cursor, ev.Input)
+				clearArea(startPos, curPos)
+				curPos = startPos
+				if mask != 0 {
+					drawText(ev.Cursor, strings.Repeat(string(mask), utf8.RuneCountInString(ev.Input)))
+				} else {
+					drawText(ev.Cursor, ev.Input)
+				}
 			}
 
 		case termbox.KeyBackspace2:
@@ -326,10 +342,13 @@ func getInput(startPos pos, cursor int, input string) (ev inputEvent) {
 				// Move cursor pos back
 				ev.Cursor--
 				// Redraw input area
-				clearArea(startPos.x, startPos.y, curPos.x, curPos.y)
-				curPos.x = startPos.x
-				curPos.y = startPos.y
-				drawText(ev.Cursor, ev.Input)
+				clearArea(startPos, curPos)
+				curPos = startPos
+				if mask != 0 {
+					drawText(ev.Cursor, strings.Repeat(string(mask), utf8.RuneCountInString(ev.Input)))
+				} else {
+					drawText(ev.Cursor, ev.Input)
+				}
 			}
 
 		case termbox.KeySpace:
@@ -342,9 +361,12 @@ func getInput(startPos pos, cursor int, input string) (ev inputEvent) {
 			// Move cursor pos fwd
 			ev.Cursor++
 			// Redraw input area
-			curPos.x = startPos.x
-			curPos.y = startPos.y
-			drawText(ev.Cursor, ev.Input)
+			curPos = startPos
+			if mask != 0 {
+				drawText(ev.Cursor, strings.Repeat(string(mask), utf8.RuneCountInString(ev.Input)))
+			} else {
+				drawText(ev.Cursor, ev.Input)
+			}
 		}
 
 	case termbox.EventResize:
@@ -361,10 +383,18 @@ func getInput(startPos pos, cursor int, input string) (ev inputEvent) {
 	return
 }
 
+// Close signals for the CLI to exit on next event
+func Close() {
+	closed = true
+}
+
 // Run sets up a new CLI on the process tty
 func Run() error {
 	var log history
 	var cursor int
+
+	// Reset closed state
+	closed = false
 
 	// Initialize terminal
 	err := termbox.Init()
@@ -379,28 +409,36 @@ func Run() error {
 	termSize.y = termH
 
 	// Draw input area
-	curPos.x = 0
-	curPos.y = 0
+	curPos = pos{0, 0}
 	drawText(-1, prefix)
 	startPos := curPos
 	// Update cursor position
 	drawText(cursor, "")
 
 	for {
-		switch ev := getInput(startPos, cursor, log.get()); ev.Type {
+		switch ev := getInput(startPos, cursor, log.get(), 0); ev.Type {
 		case termbox.EventKey:
+			// Clear terminal if new log entry and character was entered
+			if log.isLast() && log.get() == "" && ev.Key == 0 {
+				clearArea(curPos, termSize)
+				termbox.Flush()
+			}
+
 			cursor = ev.Cursor
 			log.set(ev.Input)
 
 			switch ev.Key {
 			case termbox.KeyEnter:
 				// Clear terminal
-				clearArea(0, 0, termSize.x, termSize.y)
-				curPos.x = 0
-				curPos.y = 1
+				termbox.Clear(termbox.ColorWhite, termbox.ColorDefault)
+				curPos = pos{0, 1}
 
 				// Attempt to execute command in current history entry
 				if Exec(strings.Split(strings.Trim(log.get(), " "), " ")) {
+					if closed {
+						return nil
+					}
+
 					// If entry is not last, insert new history entry with edited contents and
 					// restore any edits to original
 					if !log.isLast() {
@@ -412,15 +450,14 @@ func Run() error {
 				}
 
 				// Redraw input area
-				curPos.x = 0
-				curPos.y = 0
+				curPos = pos{0, 0}
 				drawText(-1, prefix)
 				startPos = curPos
 				drawText(cursor, log.get())
 
 			case termbox.KeyTab:
 				// Clear terminal
-				clearArea(0, 0, termSize.x, termSize.y)
+				termbox.Clear(termbox.ColorWhite, termbox.ColorDefault)
 
 				// Autocomplete command in current history entry
 				curPos.x = 0
@@ -428,8 +465,7 @@ func Run() error {
 				Exec(strings.Split(strings.Trim(log.get()+" ?", " "), " "))
 
 				// Redraw input area
-				curPos.x = 0
-				curPos.y = 0
+				curPos = pos{0, 0}
 				drawText(-1, prefix)
 				startPos = curPos
 				drawText(cursor, log.get())
@@ -438,12 +474,11 @@ func Run() error {
 				// If history has a previous entry
 				if log.prev() {
 					// Clear terminal
-					clearArea(0, 0, termSize.x, termSize.y)
+					termbox.Clear(termbox.ColorWhite, termbox.ColorDefault)
 					// Move cursor pos to end
 					cursor = utf8.RuneCountInString(log.get())
 					// Redraw input area
-					curPos.x = 0
-					curPos.y = 0
+					curPos = pos{0, 0}
 					drawText(-1, prefix)
 					startPos = curPos
 					drawText(cursor, log.get())
@@ -453,17 +488,15 @@ func Run() error {
 				// If history has a next entry
 				if log.next() {
 					// Clear terminal
-					clearArea(0, 0, termSize.x, termSize.y)
+					termbox.Clear(termbox.ColorWhite, termbox.ColorDefault)
 					// Move cursor pos to end
 					cursor = utf8.RuneCountInString(log.get())
 					// Redraw input area
-					curPos.x = 0
-					curPos.y = 0
+					curPos = pos{0, 0}
 					drawText(-1, prefix)
 					startPos = curPos
 					drawText(cursor, log.get())
 				}
-
 			}
 
 		case termbox.EventError:

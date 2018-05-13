@@ -11,47 +11,43 @@ The library is intended to be used for a whole application, meaning only one CLI
 - Easy to use!
 
 ## Usage
-There aren't many exported methods, so it should be fairly easy to use.
-
-Get started by importing the library:
 ```go
 import "github.com/alexrsagen/go-cli"
 ```
 
-### List
-```go
-type List map[string]*Item
+Get started by taking a look at the example usage in [Exec](#exec).
 
-func (l List) AddItem(name string, i *Item)
-func (l List) RemoveItem(name string)
+### CommandList
+```go
+type CommandList map[string]*Command
 ```
 
-This is a collection of items stored by name.
+This is a collection of commands stored by name.
 
 Example command list:
 ```go
-var list cli.List
-list = cli.List{
-    "command": &cli.Item{
+var list cli.CommandList
+list = cli.CommandList{
+    "command": &cli.Command{
         Description: "Example command",
         Handler: func(args []string) {
             cli.Println("Example command ran!")
         },
     },
-    "submenu": &cli.Item{
+    "submenu": &cli.Command{
         Description: "A nested menu of commands",
         Handler: func(args []string) {
             cli.SetList(list["submenu"].List)
             cli.SetPrefix("my-cli(submenu)# ")
         },
-        List: cli.List{
-            "command": &cli.Item{
+        List: cli.CommandList{
+            "command": &cli.Command{
                 Description: "Example command",
                 Handler: func(args []string) {
                     cli.Println("Submenu example command ran!")
                 },
             },
-            "return": &cli.Item{
+            "return": &cli.Command{
                 Description: "Return from submenu context",
                 Handler: func(args []string) {
                     cli.SetList(list)
@@ -60,20 +56,20 @@ list = cli.List{
             },
         },
     },
-    "another_submenu": &cli.Item{
+    "another_submenu": &cli.Command{
         Description: "Another nested menu of commands",
         Handler: func(args []string) {
             cli.SetList(list["submenu"].List)
             cli.SetPrefix("my-cli(submenu)# ")
         },
-        List: cli.List{
-            "command": &cli.Item{
+        List: cli.CommandList{
+            "command": &cli.Command{
                 Description: "Example command",
                 Handler: func(args []string) {
                     cli.Println("Another submenu example command ran!")
                 },
             },
-            "return": &cli.Item{
+            "return": &cli.Command{
                 Description: "Return from submenu context",
                 Handler: func(args []string) {
                     cli.SetList(list)
@@ -85,30 +81,30 @@ list = cli.List{
 }
 ```
 
-### Handler
+### CommandHandler
 ```go
-type Handler func(args []string)
+type CommandHandler func(args []string)
 ```
-This defines the prototype for a function ran when executing an [Item](#item)
+This defines the prototype for a function ran when executing a [Command](#command)
 
-### Item
+### Command
 ```go
-type Item struct {
+type Command struct {
     Description string
     Arguments   []string
-    Handler     Handler
-    List        List
+    Handler     CommandHandler
+    List        CommandList
 }
 ```
 
-This is a structure for storing a single command item. You cannot store the name of a command inside itself. Use a [List](#list) to store commands by name.
+This is a structure for storing a single command item. You cannot store the name of a command inside itself. Use a [CommandList](#commandlist) to store commands by name.
 
-An [Item](#item) containing other items may not have a handler set. **If you do this, it will result in a runtime panic.**
+A [Command](#command) containing other commands may not have a handler set. **If you do this, it will result in a runtime panic.**
 
 Example command item:
 ```go
-var item *cli.Item
-item = &cli.Item{
+var item *cli.Command
+item = &cli.Command{
     Description: "Example command",
     Handler: func(args []string) {
         cli.Println("Example command ran!")
@@ -129,8 +125,8 @@ import "os"
 import "github.com/alexrsagen/go-cli"
 
 func main() {
-    cli.SetList(cli.List{
-        "command": &cli.Item{
+    cli.SetList(cli.CommandList{
+        "command": &cli.Command{
             Description: "Example command",
             Handler: func(args []string) {
                 cli.Println("Example command ran!")
@@ -156,6 +152,90 @@ func main() {
 }
 ```
 
+### Field
+```go
+type Field struct {
+	DisplayName, Input string
+	Mask               rune
+	Format             *regexp.Regexp
+}
+```
+
+This is a structure containing a single form field.
+
+### FieldCategory
+```go
+type FieldCategory struct {
+	DisplayName string
+	Fields      FieldList
+}
+```
+
+This is a [FieldList](#fieldlist) with a title.
+
+### FieldList
+```go
+type FieldList []*Field
+```
+
+This is a collection of form fields.
+
+### FieldCategoryList
+```go
+type FieldCategoryList []*FieldCategory
+```
+
+This is a collection of field categories.
+
+### Form
+```go
+func (fl FieldList) Form()
+func (fcl FieldCategoryList) Form()
+```
+
+These functions render a series of input fields to be filled before returning. Should be used within a [CommandHandler](#commandhandler). The FieldCategoryList `Form()` function also renders its category titles.
+
+Example usage:
+```go
+func myHandler(args []string) {
+    field1 := &cli.Field{DisplayName: "Field 1"}
+    field2 := &cli.Field{DisplayName: "Field 2"}
+    field3 := &cli.Field{DisplayName: "Field 3"}
+    field4 := &cli.Field{DisplayName: "Field 4"}
+    field5 := &cli.Field{DisplayName: "Field 5"}
+    field6 := &cli.Field{DisplayName: "Field 6"}
+    
+    fcl := cli.FieldCategoryList{
+        &cli.FieldCategory{
+            DisplayName: "Category 1",
+            Fields: cli.FieldList{
+                field1,
+                field2,
+                field3,
+            },
+        },
+        &cli.FieldCategory{
+            DisplayName: "Category 2",
+            Fields: cli.FieldList{
+                field4,
+                field5,
+                field6,
+            },
+        },
+    }
+    
+    fcl.Form()
+    
+    cli.Println("Form filled!\n")
+    cli.Printf("%s: %s\n", field1.DisplayName, field1.Input)
+    cli.Printf("%s: %s\n", field2.DisplayName, field2.Input)
+    cli.Printf("%s: %s\n", field3.DisplayName, field3.Input)
+    cli.Printf("%s: %s\n", field4.DisplayName, field4.Input)
+    cli.Printf("%s: %s\n", field5.DisplayName, field5.Input)
+    cli.Printf("%s: %s\n", field6.DisplayName, field6.Input)
+}
+```
+
 ### SetPrefix
 ```go
 func SetPrefix(s string)
@@ -167,7 +247,7 @@ Example usage: see [Exec](#exec)
 
 ### SetList
 ```go
-func SetList(l List)
+func SetList(l CommandList)
 ```
 
 This function sets the CLI command list.
