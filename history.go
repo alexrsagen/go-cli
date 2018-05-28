@@ -80,10 +80,20 @@ func (h *history) set(s string) {
 		return
 	} else if h.isLast() {
 		h.entries[h.index].original = s
+	} else if s == h.entries[h.index].original {
+		h.entries[h.index].isEdited = false
 	} else {
 		h.entries[h.index].edited = s
 		h.entries[h.index].isEdited = true
 	}
+}
+
+func (h *history) revert() {
+	if h.isNew() || !h.entries[h.index].isEdited {
+		return
+	}
+	h.entries[h.index].edited = ""
+	h.entries[h.index].isEdited = false
 }
 
 func (h *history) revertAndAdd() {
@@ -91,6 +101,5 @@ func (h *history) revertAndAdd() {
 		return
 	}
 	h.entries[len(h.entries)-1] = &line{original: h.entries[h.index].edited}
-	h.entries[h.index].edited = ""
-	h.entries[h.index].isEdited = false
+	h.revert()
 }
