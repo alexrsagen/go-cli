@@ -117,12 +117,22 @@ func parseArgs(args []string) []string {
 		return args
 	}
 
-	newArgs := make([]string, 1)
-	arg := &newArgs[0]
-	argStr := strings.Join(args, " ")
+	var newArgs []string
+	var arg *string
 
 	var inQuote, isEscaped bool
-	for _, r := range argStr {
+	for i := range args {
+		if args[i] == "" {
+			continue
+		}
+		if inQuote || isEscaped {
+			*arg += " "
+			isEscaped = false
+		} else {
+			newArgs = append(newArgs, "")
+			arg = &newArgs[len(newArgs)-1]
+		}
+		for _, r := range args[i] {
 		switch r {
 		case '\\':
 			if isEscaped {
@@ -138,18 +148,11 @@ func parseArgs(args []string) []string {
 			} else {
 				inQuote = !inQuote
 			}
-		case ' ':
-			if inQuote || isEscaped {
-				*arg += " "
-				isEscaped = false
-			} else {
-				newArgs = append(newArgs, "")
-				arg = &newArgs[len(newArgs)-1]
-			}
 		default:
 			*arg += string(r)
 			isEscaped = false
 		}
+	}
 	}
 
 	return newArgs
