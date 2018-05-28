@@ -193,14 +193,14 @@ func Exec(path []string) bool {
 					if args != nil && len(args) == len(item.Arguments) || len(item.Arguments) == 1 && item.Arguments[0] == "*" {
 						item.Handler(args)
 						return true
-					} else {
-						// Print usage message
-						Printf("Usage: %s", name)
-						for _, arg := range item.Arguments {
-							Printf(" <%s>", arg)
-						}
-						Printf("\n")
 					}
+
+					// Print usage message
+					Printf("Usage: %s", name)
+					for _, arg := range item.Arguments {
+						Printf(" <%s>", arg)
+					}
+					Printf("\n")
 				}
 				break
 			}
@@ -439,8 +439,12 @@ func Run() error {
 				curPos = pos{0, 1}
 
 				// Revert current history entry and go to last history entry
-				log.revert()
-				log.last()
+				if log.isLast() {
+					log.set("")
+				} else {
+					log.revert()
+					log.last()
+				}
 
 				// Move cursor pos to end
 				cursor = utf8.RuneCountInString(log.get())
