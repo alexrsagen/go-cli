@@ -133,26 +133,26 @@ func parseArgs(args []string) []string {
 			arg = &newArgs[len(newArgs)-1]
 		}
 		for _, r := range args[i] {
-		switch r {
-		case '\\':
-			if isEscaped {
-				*arg += "\\"
+			switch r {
+			case '\\':
+				if isEscaped {
+					*arg += "\\"
+					isEscaped = false
+				} else {
+					isEscaped = true
+				}
+			case '"':
+				if isEscaped {
+					*arg += "\""
+					isEscaped = false
+				} else {
+					inQuote = !inQuote
+				}
+			default:
+				*arg += string(r)
 				isEscaped = false
-			} else {
-				isEscaped = true
 			}
-		case '"':
-			if isEscaped {
-				*arg += "\""
-				isEscaped = false
-			} else {
-				inQuote = !inQuote
-			}
-		default:
-			*arg += string(r)
-			isEscaped = false
 		}
-	}
 	}
 
 	return newArgs
@@ -269,9 +269,7 @@ func getInput(startPos pos, cursor int, input string, mask rune) (ev inputEvent)
 
 		// Handle keypress
 		switch tev.Key {
-		case termbox.KeyTab:
-			fallthrough
-		case termbox.KeyEnd:
+		case termbox.KeyTab, termbox.KeyEnd:
 			// Move cursor pos to end
 			ev.Cursor = utf8.RuneCountInString(ev.Input)
 			// Redraw input area
@@ -335,9 +333,7 @@ func getInput(startPos pos, cursor int, input string, mask rune) (ev inputEvent)
 				}
 			}
 
-		case termbox.KeyBackspace2:
-			fallthrough
-		case termbox.KeyBackspace:
+		case termbox.KeyBackspace, termbox.KeyBackspace2:
 			if ev.Input != "" && ev.Cursor > 0 {
 				// Remove character before cursor pos
 				pos := bytePos(ev.Cursor, ev.Input)
@@ -358,6 +354,12 @@ func getInput(startPos pos, cursor int, input string, mask rune) (ev inputEvent)
 			tev.Ch = ' '
 			fallthrough
 		case 0:
+			// Weird Ctrl+C bug on Windows
+			if tev.Ch == 0x3 {
+				ev.Key = termbox.KeyCtrlC
+				return
+			}
+
 			// Insert character at cursor position in current history entry
 			pos := bytePos(ev.Cursor, ev.Input)
 			ev.Input = ev.Input[:pos] + string(tev.Ch) + ev.Input[pos:]
@@ -431,6 +433,24 @@ func Run() error {
 			log.set(ev.Input)
 
 			switch ev.Key {
+			case termbox.KeyCtrlC:
+				// Clear terminal
+				termbox.Clear(termbox.ColorWhite, termbox.ColorDefault)
+				curPos = pos{0, 1}
+
+				// Revert current history entry and go to last history entry
+				log.revert()
+				log.last()
+
+				// Move cursor pos to end
+				cursor = utf8.RuneCountInString(log.get())
+
+				// Redraw input area
+				curPos = pos{0, 0}
+				drawText(-1, prefix)
+				startPos = curPos
+				drawText(cursor, log.get())
+
 			case termbox.KeyEnter:
 				// Clear terminal
 				termbox.Clear(termbox.ColorWhite, termbox.ColorDefault)
