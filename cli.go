@@ -190,16 +190,16 @@ func Exec(path []string) bool {
 			for name, item := range items {
 				if item.Handler != nil {
 					args = parseArgs(args)
-					if args == nil || len(args) != len(item.Arguments) {
+					if args != nil && len(args) == len(item.Arguments) || len(item.Arguments) == 1 && item.Arguments[0] == "*" {
+						item.Handler(args)
+						return true
+					} else {
 						// Print usage message
 						Printf("Usage: %s", name)
 						for _, arg := range item.Arguments {
 							Printf(" <%s>", arg)
 						}
 						Printf("\n")
-					} else {
-						item.Handler(args)
-						return true
 					}
 				}
 				break
