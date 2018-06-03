@@ -7,7 +7,7 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"github.com/nsf/termbox-go"
+	"github.com/alexrsagen/termbox-go"
 )
 
 // ErrNotRunning is returned when a CLI is not running
@@ -322,7 +322,8 @@ func getInput(startPos pos, cursor int, input string, mask rune) (ev inputEvent)
 			if ev.Input != "" && ev.Cursor < cells {
 				// Remove character at cursor pos
 				pos := bytePos(ev.Cursor, ev.Input)
-				ev.Input = ev.Input[:pos] + ev.Input[pos+1:]
+				width := bytePos(ev.Cursor+1, ev.Input) - pos
+				ev.Input = ev.Input[:pos] + ev.Input[pos+width:]
 				// Redraw input area
 				clearArea(startPos, curPos)
 				curPos = startPos
@@ -337,7 +338,8 @@ func getInput(startPos pos, cursor int, input string, mask rune) (ev inputEvent)
 			if ev.Input != "" && ev.Cursor > 0 {
 				// Remove character before cursor pos
 				pos := bytePos(ev.Cursor, ev.Input)
-				ev.Input = ev.Input[:pos-1] + ev.Input[pos:]
+				width := pos - bytePos(ev.Cursor-1, ev.Input)
+				ev.Input = ev.Input[:pos-width] + ev.Input[pos:]
 				// Move cursor pos back
 				ev.Cursor--
 				// Redraw input area

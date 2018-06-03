@@ -5,7 +5,7 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	termbox "github.com/nsf/termbox-go"
+	"github.com/alexrsagen/termbox-go"
 )
 
 type drawableForm interface {
