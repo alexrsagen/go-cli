@@ -334,7 +334,7 @@ func getInput(startPos pos, cursor int, input string, mask rune) (ev inputEvent)
 				}
 			}
 
-		case termbox.KeyBackspace, termbox.KeyBackspace2:
+		case termbox.KeyBackspace:
 			if ev.Input != "" && ev.Cursor > 0 {
 				// Remove character before cursor pos
 				pos := bytePos(ev.Cursor, ev.Input)
@@ -352,10 +352,7 @@ func getInput(startPos pos, cursor int, input string, mask rune) (ev inputEvent)
 				}
 			}
 
-		case termbox.KeySpace:
-			tev.Ch = ' '
-			fallthrough
-		case 0:
+		case 0, termbox.KeySpace, termbox.KeyCtrl3, termbox.KeyCtrl4, termbox.KeyCtrl5, termbox.KeyCtrl6, termbox.KeyCtrl7, termbox.KeyCtrl8:
 			// Weird Ctrl+C bug on Windows
 			if tev.Ch == 0x3 {
 				ev.Key = termbox.KeyCtrlC
