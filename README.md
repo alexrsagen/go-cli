@@ -189,11 +189,13 @@ This is a collection of field categories.
 
 ### Form
 ```go
-func (fl FieldList) Form()
-func (fcl FieldCategoryList) Form()
+func (fl FieldList) Form() bool
+func (fcl FieldCategoryList) Form() bool
 ```
 
 These functions render a series of input fields to be filled before returning. Should be used within a [CommandHandler](#commandhandler). The FieldCategoryList `Form()` function also renders its category titles.
+
+The return value is `false` if the input was cancelled or if inputs did not validate, otherwise `true`.
 
 Example usage:
 ```go
