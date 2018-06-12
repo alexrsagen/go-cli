@@ -40,9 +40,9 @@ func (f *Field) getInput(cursor int) inputEvent {
 // FieldList is a collection of fields
 type FieldList []*Field
 
-func (fl FieldList) getInputs(form drawableForm) {
+func (fl FieldList) getInputs(form drawableForm) bool {
 	if len(fl) == 0 {
-		return
+		return true
 	}
 
 	var curField int
@@ -82,7 +82,7 @@ func (fl FieldList) getInputs(form drawableForm) {
 			case termbox.KeyEnter:
 				// Submit form if on last field
 				if curField == len(fl)-1 {
-					return
+					return true
 				}
 				fallthrough
 			case termbox.KeyTab:
@@ -113,6 +113,8 @@ func (fl FieldList) getInputs(form drawableForm) {
 						drawText(cursor, fl[curField].Input)
 					}
 				}
+			case termbox.KeyCtrlC:
+				return false
 			}
 		case termbox.EventResize:
 			// Redraw form
@@ -144,18 +146,23 @@ func (fl FieldList) drawForm() {
 }
 
 // Form renders a series of input fields to be filled before returning
-func (fl FieldList) Form() {
+func (fl FieldList) Form() bool {
 	// Draw form
 	fl.drawForm()
 
 	// Get form input
-	fl.getInputs(fl)
+	cancelled := !fl.getInputs(fl)
 
 	// Clear terminal
 	termbox.Clear(termbox.ColorWhite, termbox.ColorDefault)
 	curPos = pos{0, 1}
 
+	if cancelled {
+		return false
+	}
+
 	// TODO: Validate form input
+	return true
 }
 
 // FieldCategory is a FieldList with a title
@@ -181,7 +188,7 @@ func (fcl FieldCategoryList) drawForm() {
 }
 
 // Form renders a series of input fields to be filled before returning
-func (fcl FieldCategoryList) Form() {
+func (fcl FieldCategoryList) Form() bool {
 	// Draw form
 	fcl.drawForm()
 
@@ -192,11 +199,16 @@ func (fcl FieldCategoryList) Form() {
 			fields = append(fields, f)
 		}
 	}
-	fields.getInputs(fcl)
+	cancelled := !fields.getInputs(fcl)
 
 	// Clear terminal
 	termbox.Clear(termbox.ColorWhite, termbox.ColorDefault)
 	curPos = pos{0, 1}
 
+	if cancelled {
+		return false
+	}
+
 	// TODO: Validate form input
+	return true
 }
