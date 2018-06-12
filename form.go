@@ -50,7 +50,11 @@ func (fl FieldList) getInputs(form drawableForm) {
 
 	// Update cursor position
 	curPos = fl[curField].pos
-	drawText(cursor, fl[curField].Input)
+	if fl[curField].Mask != 0 {
+		drawText(cursor, strings.Repeat(string(fl[curField].Mask), utf8.RuneCountInString(fl[curField].Input)))
+	} else {
+		drawText(cursor, fl[curField].Input)
+	}
 
 	for {
 		initPos := curPos
@@ -67,7 +71,11 @@ func (fl FieldList) getInputs(form drawableForm) {
 
 				// Update cursor position
 				curPos = fl[curField].pos
-				drawText(cursor, fl[curField].Input)
+				if fl[curField].Mask != 0 {
+					drawText(cursor, strings.Repeat(string(fl[curField].Mask), utf8.RuneCountInString(fl[curField].Input)))
+				} else {
+					drawText(cursor, fl[curField].Input)
+				}
 			}
 
 			switch ev.Key {
@@ -86,7 +94,11 @@ func (fl FieldList) getInputs(form drawableForm) {
 
 					// Update cursor position
 					curPos = fl[curField].pos
-					drawText(cursor, fl[curField].Input)
+					if fl[curField].Mask != 0 {
+						drawText(cursor, strings.Repeat(string(fl[curField].Mask), utf8.RuneCountInString(fl[curField].Input)))
+					} else {
+						drawText(cursor, fl[curField].Input)
+					}
 				}
 			case termbox.KeyArrowUp:
 				if curField > 0 {
@@ -95,7 +107,11 @@ func (fl FieldList) getInputs(form drawableForm) {
 
 					// Update cursor position
 					curPos = fl[curField].pos
-					drawText(cursor, fl[curField].Input)
+					if fl[curField].Mask != 0 {
+						drawText(cursor, strings.Repeat(string(fl[curField].Mask), utf8.RuneCountInString(fl[curField].Input)))
+					} else {
+						drawText(cursor, fl[curField].Input)
+					}
 				}
 			}
 		case termbox.EventResize:
@@ -105,7 +121,11 @@ func (fl FieldList) getInputs(form drawableForm) {
 
 			// Update cursor position
 			curPos = fl[curField].pos
-			drawText(cursor, fl[curField].Input)
+			if fl[curField].Mask != 0 {
+				drawText(cursor, strings.Repeat(string(fl[curField].Mask), utf8.RuneCountInString(fl[curField].Input)))
+			} else {
+				drawText(cursor, fl[curField].Input)
+			}
 		}
 	}
 }
